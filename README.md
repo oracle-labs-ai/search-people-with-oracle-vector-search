@@ -41,41 +41,41 @@ Para poder ejecutar este laboratorio es necesario contar con los siguientes prer
 
 ## Paso 1: Carga de los datos
 
-Para realizar la carga de los datos, podemos ir al menú principal de la base de datos Autonomous AI Databases y seleccionar **Data Load.**
+Para realizar la carga de los datos, vamos a crear una tabla people en la base de datos.
 
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image.png)
+```sql
+CREATE TABLE PEOPLE (
+    ID       NUMBER,
+    PERSONA  VARCHAR2(32767),
+    LABELS   VARCHAR2(32767)
+);
+```
 
-En la consola seleccionamos Load Data
+Cuando la tabla ha sido creada exitosamente, vamos a ejecutar el siguiente script, el cuál va a descargar un archivo de personas e insertarlo en la tabla.
 
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%201.png)
+```sql
+BEGIN
+  DBMS_CLOUD.COPY_DATA(
+    table_name      => 'PEOPLE',
+    credential_name => NULL,
+    file_uri_list   => '
+https://objectstorage.us-ashburn-1.oraclecloud.com/n/idkrkto5fyu8/b/people/o/people.csv',
+    format          => JSON_OBJECT(
+      'type' VALUE 'csv',
+      'skipheaders' VALUE '1'
+    )
+  );
 
-Y en Select Files descargamos el csv de personas disponible ![aquí](./people.csv).
+  EXECUTE IMMEDIATE 'ALTER SESSION SET CURRENT_SCHEMA = ADMIN';
+EXCEPTION
+  WHEN OTHERS THEN
+    EXECUTE IMMEDIATE 'ALTER SESSION SET CURRENT_SCHEMA = ADMIN';
+    RAISE;
+END;
+/
+```
 
-Podemos descargar el archivo haciendo clic en el botón de descargar 
-
-![image.png](./Búsqueda%20semántica%20en%20una%20base%20de%20datos%20utilizando/Screenshot%202026-06-23%20at%2011.05.53 AM.png)
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%202.png)
-
-Al cargar el archivo csv, se detectará automáticamente el tipo de datos de cada columna, sin embargo, es necesario confirmar la configuración en el botón **Review Settings**.
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%203.png)
-
-Una vez hayamos revisado los datos en el panel de configuración, podemos presionar **Close**, muchas veces no es necesario editar los valores, sólo es necesario confirmarlos.
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%204.png)
-
-Cuando el badge de Review Settings desaparece, podemos hacer clic en **Start** y luego **Run**.
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%205.png)
-
-Si todo sucede exitosamente, podremos ver el tiempo de duración de la carga de los archivos, la cantidad de columnas creadas y el estado de la carga.
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%206.png)
-
-Ahora que tenemos los datos cargados, podemos volver a la página principal de la base de datos y ejecutar el resto de este laboratorio en la consola SQL
-
-![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%207.png)
+La información insertada puede visualizarse [aquí](./people.csv) 
 
 ## Paso 2: Creación de una credencial
 
@@ -194,8 +194,8 @@ select dbms_vector_chain.utl_to_embedding('hello', json('
    {
         "provider"       : "ocigenai",
         "credential_name": "OCI_CRED",
-        "url"            : "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
-        "model"          : "cohere.embed-multilingual-v3.0"
+        "url"            : "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com/20231130/actions/embedText",
+        "model"          : "cohere.embed-v4.0"
     }')) as embedding from dual;
 ```
 
@@ -241,6 +241,7 @@ ADD (
 Para cada item en la tabla, vamos a insertar en la columna embedding un elemento de tipo vector obtenido a partir del procedimiento [utl_to_embedding](https://docs.oracle.com/en/database/oracle/oracle-database/26/vecse/utl_to_embedding-and-utl_to_embeddings-dbms_vector_chain.html), utilizado previamente.
 
 ```sql
+
 UPDATE PEOPLE
 SET embedding =
   dbms_vector_chain.utl_to_embedding(
@@ -248,8 +249,8 @@ SET embedding =
     JSON('{
       "provider"       : "ocigenai",
       "credential_name": "OCI_CRED",
-      "url"            : "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
-      "model"          : "cohere.embed-multilingual-v3.0"
+      "url"            : "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com/20231130/actions/embedText",
+      "model"          : "cohere.embed-v4.0"
     }')
   )
 WHERE embedding IS NULL
@@ -292,8 +293,8 @@ SELECT
       JSON('{
         "provider"       : "ocigenai",
         "credential_name": "OCI_CRED",
-        "url"            : "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
-        "model"          : "cohere.embed-multilingual-v3.0"
+        "url"            : "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com/20231130/actions/embedText",
+        "model"          : "cohere.embed-v4.0"
       }')
     ),
     COSINE
@@ -342,8 +343,8 @@ SELECT
       JSON('{
         "provider"       : "ocigenai",
         "credential_name": "OCI_CRED",
-        "url"            : "https://inference.generativeai.us-chicago-1.oci.oraclecloud.com/20231130/actions/embedText",
-        "model"          : "cohere.embed-multilingual-v3.0"
+        "url"            : "https://inference.generativeai.us-ashburn-1.oci.oraclecloud.com/20231130/actions/embedText",
+        "model"          : "cohere.embed-v4.0"
       }')
     ),
     COSINE
