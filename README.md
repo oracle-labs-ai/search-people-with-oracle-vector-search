@@ -1,21 +1,26 @@
 # Búsqueda semántica en una base de datos utilizando el objeto vector
 
+
 ## Requisitos
 
 Para poder ejecutar este laboratorio es necesario contar con los siguientes prerrequisitos:
 
+1. **Políticas** para autorizar a algunas instancias a consumir los servicios de ia
+
+    > Si no existe, podemos crear las políticas necesarias siguiendo [este tutorial](https://github.com/oracle-labs-ai/oci-console-tutorials/blob/main/Creaci%C3%B3n%20de%20una%20pol%C3%ADtica.md)
+
 1. **Un compartment** que nos permitirá agrupar los recursos creados.
 
-    > Podemos crear  el compartment siguiendo [el siguiente tutorial](../oci-console-tutorials/Creación%20de%20un%20compartment.md).
+    > Si no tenemos un compartmenr, podemos crear un compartment siguiendo [el siguiente tutorial](../oci-console-tutorials/Creación%20de%20un%20compartment.md).
 
 2. **Base de datos Oracle con capacidades de IA**
     
-    Es necesario contar con una base de datos **Oracle Database 23ai o 26ai**, ya sea del tipo:
+    Es necesario contar con una base de datos **Oracle Database 23ai o 26ai** que funcionará como base de conocimiento, puede ser de tipo:
     
     - Transaction Processing
     - Data Warehouse
 
-    > Vamos a crear una base de datos autonomous 26ai [siguiendo este tutorial](../oci-console-tutorials/Crear%20base%20de%20datos%20autónoma.md).
+    > Si no tenemos una base de datos, podemos crear una base de datos autonomous 26ai [siguiendo este tutorial](../oci-console-tutorials/Crear%20base%20de%20datos%20autónoma.md).
     
 3. **Credenciales para acceso a servicios de Inteligencia Artificial**
     
@@ -31,8 +36,8 @@ Para poder ejecutar este laboratorio es necesario contar con los siguientes prer
     region=us-chicago-1
     ```
 
-    > Vamos a crear y descargar las credenciales [siguiendo este tutorial](../oci-console-tutorials/Creación%20de%20credenciales.md).
-      
+    > Si no tenemos credenciales, vamos a crear y descargar las credenciales [siguiendo este tutorial](../oci-console-tutorials/Creación%20de%20credenciales.md).
+    
 
 ## Paso 1: Carga de los datos
 
@@ -73,9 +78,10 @@ Ahora que tenemos los datos cargados, podemos volver a la página principal de l
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%207.png)
 
 ## Paso 2: Creación de una credencial
-Para que la base de datos pueda conectarse con Oracle Generative AI y Object Storage, necesitas crear una credencial dentro de Autonomous Database.
 
-La credencial se llamará `OCI_CRED` y usará los datos de la API key creada en los pasos previos.
+Si no existe una credencial, es necesario crear una para que la base de datos pueda conectarse a Oracle Generative AI y Object Storage.
+
+Se llamará `OCI_CRED` y usará para permitir a la base de datos consumir servicios de IA.
 
 <u>Antes de ejecutar:</u> reemplaza todos los valores entre `<...>` por los datos reales de tu cuenta OCI. No compartas ni subas tu llave privada a un repositorio público.
 
