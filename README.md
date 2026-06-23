@@ -4,18 +4,24 @@
 
 Para poder ejecutar este laboratorio es necesario contar con los siguientes prerrequisitos:
 
-1. **Base de datos Oracle con capacidades de IA**
+1. **Un compartment** que nos permitirá agrupar los recursos creados.
+
+    > Podemos crear  el compartment siguiendo [el siguiente tutorial](../oci-console-tutorials/Creación%20de%20un%20compartment.md).
+
+2. **Base de datos Oracle con capacidades de IA**
     
     Es necesario contar con una base de datos **Oracle Database 23ai o 26ai**, ya sea del tipo:
     
     - Transaction Processing
     - Data Warehouse
+
+    > Vamos a crear una base de datos autonomous 26ai [siguiendo este tutorial](../oci-console-tutorials/Crear%20base%20de%20datos%20autónoma.md).
     
-2. **Credenciales para acceso a servicios de Inteligencia Artificial**
+3. **Credenciales para acceso a servicios de Inteligencia Artificial**
     
     Es importante contar con un API Key creada en la cuenta de OCI que nos permitirán realizar solicitudes desde la base de datos a los servicios de inteligencia artificial.
     
-    La configuración del API Key se ve dde la siguiente manera.
+    La configuración del API Key se ve de la siguiente manera.
 
     ```docker
     [DEFAULT]
@@ -24,7 +30,9 @@ Para poder ejecutar este laboratorio es necesario contar con los siguientes prer
     tenancy=ocid1.tenancy.
     region=us-chicago-1
     ```
-    
+
+    > Vamos a crear y descargar las credenciales [siguiendo este tutorial](../oci-console-tutorials/Creación%20de%20credenciales.md).
+      
 
 ## Paso 1: Carga de los datos
 
@@ -36,7 +44,11 @@ En la consola seleccionamos Load Data
 
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%201.png)
 
-Y en Select Files seleccionamos el csv de personas disponible ![aquí](./personas100.csv).
+Y en Select Files descargamos el csv de personas disponible ![aquí](./people.csv).
+
+Podemos descargar el archivo haciendo clic en el botón de descargar 
+
+![image.png](./Búsqueda%20semántica%20en%20una%20base%20de%20datos%20utilizando/Screenshot%202026-06-23%20at%2011.05.53 AM.png)
 
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%202.png)
 
@@ -48,7 +60,7 @@ Una vez hayamos revisado los datos en el panel de configuración, podemos presio
 
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%204.png)
 
-Cuando el badge de Review Settings desaparece, podemos hacer clic en **Start**
+Cuando el badge de Review Settings desaparece, podemos hacer clic en **Start** y luego **Run**.
 
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%205.png)
 
@@ -61,27 +73,93 @@ Ahora que tenemos los datos cargados, podemos volver a la página principal de l
 ![image.png](B%C3%BAsqueda%20sem%C3%A1ntica%20en%20una%20base%20de%20datos%20utilizando/image%207.png)
 
 ## Paso 2: Creación de una credencial
+Para que la base de datos pueda conectarse con Oracle Generative AI y Object Storage, necesitas crear una credencial dentro de Autonomous Database.
 
-El siguiente comando usa el paquete [dbms_vector](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_vector1.html) para crear una credencial con el procedimiento [create_credential](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_vector1.html#GUID-4BBCBF46-3903-4EBB-8BE8-A7690151CF25).
+La credencial se llamará `OCI_CRED` y usará los datos de la API key creada en los pasos previos.
 
-Los campos necesarios en este bloque pueden ser encontrados en la configuración de la credencial, el campo private_key corresponde al contenido del archivo .pem descargado en la creación de la key, el cuadrado rojo en la siguiente imagen.
-
-![key](./Búsqueda%20semántica%20en%20una%20base%20de%20datos%20utilizando/image11.png)
+<u>Antes de ejecutar:</u> reemplaza todos los valores entre `<...>` por los datos reales de tu cuenta OCI. No compartas ni subas tu llave privada a un repositorio público.
 
 ```sql
-declare
-  jo json_object_t;
-begin
-  jo := json_object_t();
-  jo.put('user_ocid','ocid1.user.oc1..');
-  jo.put('tenancy_ocid','ocid1.tenancy.oc1..');
-  jo.put('compartment_ocid','ocid1.compartment.oc1..');
-  jo.put('private_key','MII...6+7eS');
-  jo.put('fingerprint','00:ab');
-  dbms_vector.create_credential(
-    credential_name   => 'OCI_CRED',
-    params            => json(jo.to_string));
-end;
+BEGIN
+  DBMS_CLOUD.DROP_CREDENTIAL(credential_name => 'OCI_CRED');
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+
+DECLARE
+  jo JSON_OBJECT_T;
+BEGIN
+  jo := JSON_OBJECT_T();
+  jo.put('user_ocid', '<USER_OCID>');
+  jo.put('tenancy_ocid', '<TENANCY_OCID>');
+  jo.put('compartment_ocid', '<COMPARTMENT_OCID>');
+  jo.put('private_key', q'[<PRIVATE_KEY_PEM>]');
+  jo.put('fingerprint', '<FINGERPRINT>');
+
+  DBMS_VECTOR.CREATE_CREDENTIAL(
+    credential_name => 'OCI_CRED',
+    params          => JSON(jo.to_string)
+  );
+END;
+/
+```
+
+<details>
+<summary>Ver ejemplo dummy de cómo debe quedar la credencial</summary>
+
+Este ejemplo no funciona para conectarse a OCI. Solo muestra el formato correcto de los valores, especialmente de `private_key`.
+
+Observa que la llave privada se pega completa dentro de `q'[...]'`, incluyendo:
+
+- La línea `-----BEGIN PRIVATE KEY-----`.
+- Todas las líneas intermedias de la llave.
+- La línea `-----END PRIVATE KEY-----`.
+- Los saltos de línea originales.
+
+```sql
+BEGIN
+  DBMS_CLOUD.DROP_CREDENTIAL(credential_name => 'OCI_CRED');
+EXCEPTION
+  WHEN OTHERS THEN NULL;
+END;
+/
+
+DECLARE
+  jo JSON_OBJECT_T;
+BEGIN
+  jo := JSON_OBJECT_T();
+  jo.put('user_ocid', 'ocid1.user.oc1..aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  jo.put('tenancy_ocid', 'ocid1.tenancy.oc1..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+  jo.put('compartment_ocid', 'ocid1.compartment.oc1..cccccccccccccccccccccccccccccccccccccccccccccccccccc');
+  jo.put('private_key', q'[-----BEGIN PRIVATE KEY-----
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+-----END PRIVATE KEY-----]');
+  jo.put('fingerprint', 'aa:bb:cc:dd:ee:ff:11:22:33:44:55:66:77:88:99:00');
+
+  DBMS_VECTOR.CREATE_CREDENTIAL(
+    credential_name => 'OCI_CRED',
+    params          => JSON(jo.to_string)
+  );
+END;
+/
+```
+
+<u>Validación rápida:</u> si tu llave quedó en una sola línea o si faltan las líneas `BEGIN PRIVATE KEY` y `END PRIVATE KEY`, vuelve a copiarla desde el archivo `.pem`.
+
+</details>
+
+Si necesitas recrear la credencial, puedes eliminarla con este comando y volver a ejecutar el bloque anterior:
+
+```sql
+BEGIN
+  DBMS_CLOUD.DROP_CREDENTIAL('OCI_CRED');
+END;
+/
 ```
 
 Verifica que la credencial aparece en la lista de credenciales
@@ -214,7 +292,7 @@ SELECT
     ),
     COSINE
   ) AS cosine_distance
-FROM personas100 p ORDER BY COSINE_DISTANCE
+FROM people p ORDER BY COSINE_DISTANCE
 FETCH FIRST 10 ROWS ONLY;
 ```
 
@@ -241,7 +319,7 @@ El resultado de esta ejecución muestra un campo execution time, en el ejemplo a
 A continuación, vamos a crear un índice IVF, este índice va a dividir el espacio vectorial en clusters y ejecutará la búsqueda únnicamente en el cluster más cercano. Este índice vive en disco y nos permitirá trabajar con datasets enormes.
 
 ```sql
-CREATE VECTOR INDEX idx_personas ON PERSONAS100(EMBEDDING) ORGANIZATION NEIGHBOR PARTITIONS DISTANCE COSINE WITH TARGET ACCURACY 95;
+CREATE VECTOR INDEX idx_personas ON PEOPLE(EMBEDDING) ORGANIZATION NEIGHBOR PARTITIONS DISTANCE COSINE WITH TARGET ACCURACY 95;
 
 -- Vector INDEX created.
 ```
@@ -264,7 +342,7 @@ SELECT
     ),
     COSINE
   ) AS cosine_distance
-FROM personas100 p
+FROM PEOPLE p
 ORDER BY cosine_distance
 FETCH APPROX FIRST 10 ROWS ONLY
 WITH TARGET ACCURACY 95;
